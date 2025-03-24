@@ -7,3 +7,6 @@ from langchain.chains import ConversationChain
 
 load_dotenv()
 
+st.set_page_config(
+    
+)
