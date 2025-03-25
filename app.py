@@ -65,4 +65,7 @@ if user_input:
 with st.sidebar:
     st.title("Options")
 
-    if st.
+    if st.button("Clear Chat History"):
+        st.session_state.chat_histoy = []
+
+    memory = ConversationBufferMemory(return_messages = True)
