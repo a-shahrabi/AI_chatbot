@@ -16,4 +16,4 @@ st.set_page_config(
 )
 
 st.title("AI Chabot")
-st.subheader("Built with streamlit, ")
+st.subheader("Built with streamlit, Langchain and GPT-4o")
