@@ -50,3 +50,10 @@ user_input = st.chat_input("Type your message...")
 
 if user_input:
     st.session_state.chat_history.appen(HumanMessage(content = user_input))
+    with st.chat_message("user"):
+        st.write(user_input)
+
+        with st.chat_message("assistant"):
+            with st.spinner("Pondering..."):
+                response = st.session_state.conversation.predict(input = user_input)
+                st.write(response)
