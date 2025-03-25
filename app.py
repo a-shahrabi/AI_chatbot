@@ -45,3 +45,8 @@ if "conversation" not in st.session_state:
     else:
         with st.chat_message("assistant"):
             st.write(message.content)
+# Take user input
+user_input = st.chat_input("Type your message...")
+
+if user_input:
+    st.session_state.chat_history.appen(HumanMessage(content = user_input))
