@@ -37,3 +37,11 @@ if "conversation" not in st.session_state:
     )
 
    # Display chat history
+   for message in st.session_state.chat_history:
+    if isinstance(message, HumanMessage):
+        with st.chat_message("user"):
+            st.write(message.content)
+
+    else:
+        with st.chat_message("assistant")
+        
