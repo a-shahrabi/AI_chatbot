@@ -19,4 +19,7 @@ st.title("AI Chabot")
 st.subheader("Built with streamlit, Langchain and GPT-4o")
 
 if "chat_history" not in st.session_state:
-    
+    st.session_state.chat_history = []
+
+if "conversation" not in st.session_state:
+    llm = ChatOpenAI
