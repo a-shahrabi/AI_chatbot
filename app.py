@@ -43,5 +43,5 @@ if "conversation" not in st.session_state:
             st.write(message.content)
 
     else:
-        with st.chat_message("assistant")
-        
+        with st.chat_message("assistant"):
+            st.write(message.content)
