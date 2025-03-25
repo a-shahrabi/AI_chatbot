@@ -22,4 +22,7 @@ if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
 
 if "conversation" not in st.session_state:
-    llm = ChatOpenAI
+    llm = ChatOpenAI(
+        model_name = "gpt-4o",
+        temprature = 0.7,
+    )
