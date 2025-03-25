@@ -10,5 +10,5 @@ from langchain.schema import HumanMessage, AIMessage
 load_dotenv()
 
 st.set_page_config(
-
+    page_title="AI Chatbot"
 )
