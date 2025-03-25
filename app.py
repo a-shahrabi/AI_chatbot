@@ -25,4 +25,5 @@ if "conversation" not in st.session_state:
     llm = ChatOpenAI(
         model_name = "gpt-4o",
         temprature = 0.7,
+        openai_api_key = os.getenv("OPENAI_API_KEY")
     )
