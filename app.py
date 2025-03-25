@@ -17,3 +17,6 @@ st.set_page_config(
 
 st.title("AI Chabot")
 st.subheader("Built with streamlit, Langchain and GPT-4o")
+
+if "chat_history" not in st.session_state:
+    
