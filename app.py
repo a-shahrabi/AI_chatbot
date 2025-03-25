@@ -35,3 +35,5 @@ if "conversation" not in st.session_state:
         memory = memory,
         verbose = False
     )
+
+   # Display chat history
