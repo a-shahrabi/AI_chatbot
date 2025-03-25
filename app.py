@@ -57,3 +57,12 @@ if user_input:
             with st.spinner("Pondering..."):
                 response = st.session_state.conversation.predict(input = user_input)
                 st.write(response)
+
+        
+        # Respond to chat history
+        st.session_state.chat_history.append(AIMessage(content = response))
+
+with st.sidebar:
+    st.title("Options")
+
+    if st.
