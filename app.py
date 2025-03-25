@@ -10,6 +10,7 @@ from langchain.schema import HumanMessage, AIMessage
 load_dotenv()
 
 st.set_page_config(
+
     page_title="AI Chatbot"
     layout="centered"
 
@@ -27,3 +28,5 @@ if "conversation" not in st.session_state:
         temprature = 0.7,
         openai_api_key = os.getenv("OPENAI_API_KEY")
     )
+
+    memory = ConversationBufferMemory(return_messages=True)
