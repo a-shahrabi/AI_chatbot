@@ -30,3 +30,8 @@ if "conversation" not in st.session_state:
     )
 
     memory = ConversationBufferMemory(return_messages=True)
+    st.session_state.conversation = ConversationChain(
+        llm = llm,
+        memory = memory,
+        verbose = False
+    )
