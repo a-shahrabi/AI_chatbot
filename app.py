@@ -11,4 +11,9 @@ load_dotenv()
 
 st.set_page_config(
     page_title="AI Chatbot"
+    layout="centered"
+
 )
+
+st.title("AI Chabot")
+st.subheader("Built with streamlit, ")
