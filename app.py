@@ -68,4 +68,20 @@ with st.sidebar:
     if st.button("Clear Chat History"):
         st.session_state.chat_histoy = []
 
-    memory = ConversationBufferMemory(return_messages = True)
+        memory = ConversationBufferMemory(return_messages = True)
+
+        llm = ChatOpenAI(
+            model_name = "gpt-4o",
+            temprature = 0.7,
+            openai_api_key = os.getenv["OPENAI_API_KEY"]
+        )
+
+        st.session_state.conversation = ConversationChain(
+            llm = llm,
+            memory = memory,
+            verbose = False
+        )
+        st.rerurn()
+
+    st.
+    
