@@ -83,5 +83,14 @@ with st.sidebar:
         )
         st.rerurn()
 
-    st.
+    st.subheader("about")
+
+    st.markdown(
+        """ Chatbot uses:
+
+        - **Streamlit** for the interface
+        - **LangChain** for conversation
+        - **GPT-4o** as our language model
+        - **ConversationBufferMemory** to remember messages """
+    )
     
