@@ -15,3 +15,27 @@ A sophisticated AI chatbot built with Streamlit, LangChain, and OpenAI's GPT mod
 - **User Feedback System**: Rate responses with thumbs up/down
 - **Responsive Design**: Works on desktop and mobile devices
 
+## Installation
+
+1. Clone this repository:
+   ```
+   git clone https://github.com/your-username/ai-chatbot.git
+   cd ai-chatbot
+   ```
+
+2. Create a virtual environment (recommended):
+   ```
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   ```
+
+3. Install required packages:
+   ```
+   pip install -r requirements.txt
+   ```
+
+4. Create a `.env` file in the project root and add your OpenAI API key:
+   ```
+   OPENAI_API_KEY=your_openai_api_key_here
+   ```
+
