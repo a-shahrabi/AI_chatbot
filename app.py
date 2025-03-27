@@ -34,14 +34,14 @@ if "conversation" not in st.session_state:
         verbose=False
     )
 
-# Display chat history
+# Display chat history with custom styling
 for message in st.session_state.chat_history:
     if isinstance(message, HumanMessage):
-        with st.chat_message("user"):
-            st.write(message.content)
+        with st.chat_message("user", avatar="👤"):
+            st.markdown(f"<div style='background-color: #f0f2f6; padding: 10px; border-radius: 8px; border-left: 5px solid #4b8bbe;'>{message.content}</div>", unsafe_allow_html=True)
     else:
-        with st.chat_message("assistant"):
-            st.write(message.content)
+        with st.chat_message("assistant", avatar="🤖"):
+            st.markdown(f"<div style='background-color: #e6f3ff; padding: 10px; border-radius: 8px; border-left: 5px solid #0066cc;'>{message.content}</div>", unsafe_allow_html=True)
 
 # Take user input
 user_input = st.chat_input("Type your message...")
