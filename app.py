@@ -111,6 +111,10 @@ st.markdown("""
     .chat-message.assistant {
         background-color: #e6f7ff;
     }
-    
+    .chat-message .avatar {
+        width: 20px;
+        height: 20px;
+        margin-right: 10px;
+    }
 </style>
 """, unsafe_allow_html=True)
