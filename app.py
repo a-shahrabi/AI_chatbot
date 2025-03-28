@@ -22,18 +22,19 @@ if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
 
 if "conversation" not in st.session_state:
-    llm = ChatOpenAI(
-        model_name="gpt-4o",
-        temperature=0.7,
-        openai_api_key=os.getenv("OPENAI_API_KEY")
-    )
+    try:
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            st.error("OpenAI API key not found. Please check your .env file.")
+            st.stop()
+            
+        llm = ChatOpenAI(
+            model_name="gpt-4o",
+            temperature=0.7,
+            openai_api_key=api_key
+        )
 
-    memory = ConversationBufferMemory(return_messages=True)
-    st.session_state.conversation = ConversationChain(
-        llm=llm,
-        memory=memory,
-        verbose=False
-    )
+        
 
 # Display chat history
 for message in st.session_state.chat_history:
