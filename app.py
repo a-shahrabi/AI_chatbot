@@ -98,6 +98,13 @@ st.markdown("""
         max-width: 1200px;
         margin: 0 auto;
     }
-   
+    .chat-message {
+        padding: 1.5rem;
+        border-radius: 0.5rem;
+        margin-bottom: 1rem;
+        display: flex;
+        flex-direction: column;
+    }
+    
 </style>
 """, unsafe_allow_html=True)
