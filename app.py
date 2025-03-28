@@ -105,6 +105,12 @@ st.markdown("""
         display: flex;
         flex-direction: column;
     }
+    .chat-message.user {
+        background-color: #f0f2f6;
+    }
+    .chat-message.assistant {
+        background-color: #e6f7ff;
+    }
     
 </style>
 """, unsafe_allow_html=True)
