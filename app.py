@@ -34,7 +34,15 @@ if "conversation" not in st.session_state:
             openai_api_key=api_key
         )
 
-        
+        memory = ConversationBufferMemory(return_messages=True)
+        st.session_state.conversation = ConversationChain(
+            llm=llm,
+            memory=memory,
+            verbose=False
+        )
+    except Exception as e:
+        st.error(f"Error initializing the chatbot: {str(e)}")
+        st.stop()
 
 # Display chat history
 for message in st.session_state.chat_history:
