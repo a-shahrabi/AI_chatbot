@@ -53,7 +53,9 @@ def display_message(message, role):
         col1, col2 = st.columns([1, 12])
         with col1:
             st.markdown(f"<div class='avatar'>{avatar}</div>", unsafe_allow_html=True)
-        
+        with col2:
+            st.markdown(f"<div class='chat-message {role}'>{message}</div>", unsafe_allow_html=True)
+        return message_container
 
 # Display chat history
 for message in st.session_state.chat_history:
