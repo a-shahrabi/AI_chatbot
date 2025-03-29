@@ -69,6 +69,7 @@ for message in st.session_state.chat_history:
 # Take user input
 user_input = st.chat_input("Type your message...")
 
+# try-except block for error handling
 if user_input:
     st.session_state.chat_history.append(HumanMessage(content=user_input))
     with st.chat_message("user"):
