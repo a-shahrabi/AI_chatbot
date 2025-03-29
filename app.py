@@ -69,23 +69,36 @@ for message in st.session_state.chat_history:
 # Take user input
 user_input = st.chat_input("Type your message...")
 
-# try-except block for error handling
+# Check if the user has provided any input
 if user_input:
+    # Add the user's message to the chat history for record keeping
     st.session_state.chat_history.append(HumanMessage(content=user_input))
+    
+    
     with st.chat_message("user"):
         st.write(user_input)
 
+    # Display the assistant's response with the "assistant" avatar
     with st.chat_message("assistant"):
         try:
+            # Show a loading spinner while waiting for the model's response
             with st.spinner("Pondering..."):
+                # Generate a response using the conversation model
                 response = st.session_state.conversation.predict(input=user_input)
+                # Display the response in the UI
                 st.write(response)
-            # Append to chat history
+            
+            # Add the assistant's response to the chat history for future context
             st.session_state.chat_history.append(AIMessage(content=response))
+        
         except Exception as e:
+            # Convert the exception to a string for error handling
             error_message = str(e)
+            
+            # Handle specific API quota errors with a user-friendly message
             if "insufficient_quota" in error_message or "429" in error_message:
                 st.error("OpenAI API quota exceeded. Please check your OpenAI account billing details or try using a different model.")
+            # Handle all other errors with a generic but informative message
             else:
                 st.error(f"An error occurred: {error_message}")
 
