@@ -48,7 +48,12 @@ if "conversation" not in st.session_state:
 def display_message(message, role):
     """Display a message with proper styling based on the role"""
     avatar = "👤" if role == "user" else "🤖"
-  
+    message_container = st.container()
+    with message_container:
+        col1, col2 = st.columns([1, 12])
+        with col1:
+            st.markdown(f"<div class='avatar'>{avatar}</div>", unsafe_allow_html=True)
+        
 
 # Display chat history
 for message in st.session_state.chat_history:
