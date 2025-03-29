@@ -75,12 +75,18 @@ if user_input:
         st.write(user_input)
 
     with st.chat_message("assistant"):
-        with st.spinner("Pondering..."):
-            response = st.session_state.conversation.predict(input=user_input)
-            st.write(response)
-    
-    # Append to chat history
-    st.session_state.chat_history.append(AIMessage(content=response))
+        try:
+            with st.spinner("Pondering..."):
+                response = st.session_state.conversation.predict(input=user_input)
+                st.write(response)
+            # Append to chat history
+            st.session_state.chat_history.append(AIMessage(content=response))
+        except Exception as e:
+            error_message = str(e)
+            if "insufficient_quota" in error_message or "429" in error_message:
+                st.error("OpenAI API quota exceeded. Please check your OpenAI account billing details or try using a different model.")
+            else:
+                st.error(f"An error occurred: {error_message}")
 
 with st.sidebar:
     st.title("Options")
