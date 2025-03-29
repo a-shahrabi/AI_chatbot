@@ -85,23 +85,38 @@ if user_input:
 with st.sidebar:
     st.title("Options")
 
+    # Clear chat button (existing code)
     if st.button("Clear Chat History"):
         st.session_state.chat_history = []
-
         memory = ConversationBufferMemory(return_messages=True)
-
         llm = ChatOpenAI(
             model_name="gpt-4o",
             temperature=0.7,
             openai_api_key=os.getenv("OPENAI_API_KEY")
         )
-
         st.session_state.conversation = ConversationChain(
             llm=llm,
             memory=memory,
             verbose=False
         )
         st.rerun()
+    
+    #  Export Chat 
+    if st.session_state.chat_history:  # Only show export button if there's chat history
+        # Create formatted chat text for export
+        chat_export = "\n\n".join([
+            f"{'User' if isinstance(msg, HumanMessage) else 'Assistant'}: {msg.content}" 
+            for msg in st.session_state.chat_history
+        ])
+        
+        # Download button
+        st.download_button(
+            label="Export Chat History",
+            data=chat_export,
+            file_name="chatbot_conversation.txt",
+            mime="text/plain",
+            help="Download the current conversation as a text file"
+        )
 
     st.subheader("About")
 
