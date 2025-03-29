@@ -74,7 +74,7 @@ if user_input:
     # Add the user's message to the chat history for record keeping
     st.session_state.chat_history.append(HumanMessage(content=user_input))
     
-    
+    # Display the user's message in the UI with the "user" avatar
     with st.chat_message("user"):
         st.write(user_input)
 
