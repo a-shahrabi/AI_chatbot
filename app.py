@@ -44,6 +44,12 @@ if "conversation" not in st.session_state:
         st.error(f"Error initializing the chatbot: {str(e)}")
         st.stop()
 
+# Custom message display function
+def display_message(message, role):
+    """Display a message with proper styling based on the role"""
+    avatar = "👤" if role == "user" else "🤖"
+  
+
 # Display chat history
 for message in st.session_state.chat_history:
     if isinstance(message, HumanMessage):
