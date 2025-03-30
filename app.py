@@ -147,3 +147,30 @@ def get_system_message(personality):
     else:
         return "You are a helpful AI assistant."
 
+# Initialize the conversation with default settings if it doesn't exist in session state
+if "conversation" not in st.session_state:
+    try:
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            st.error("OpenAI API key not found. Please check your .env file.")
+            st.stop()
+        
+        # Set default personality when app first loads
+        personality = "Helpful Assistant"  # Default personality
+        system_message = get_system_message(personality)
+        
+        llm = ChatOpenAI(
+            model_name="gpt-4o",
+            temperature=0.7,
+            openai_api_key=api_key
+        )
+
+        memory = ConversationBufferMemory(return_messages=True)
+        st.session_state.conversation = ConversationChain(
+            llm=llm,
+            memory=memory,
+            verbose=False
+        )
+    except Exception as e:
+        st.error(f"Error initializing the chatbot: {str(e)}")
+        st.stop()
