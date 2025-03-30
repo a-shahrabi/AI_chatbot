@@ -113,4 +113,22 @@ with st.sidebar:
         ["Helpful Assistant", "Friendly Teacher", "Creative Writer", "Technical Expert"]
     )
     
-   
+    # Clear chat button - Resets the conversation history and reinitializes the chatbot
+    if st.button("Clear Chat History"):
+        st.session_state.chat_history = []
+        memory = ConversationBufferMemory(return_messages=True)
+        
+        # Update the system message based on personality - Ensures the new conversation uses the selected personality
+        system_message = get_system_message(personality)
+        
+        llm = ChatOpenAI(
+            model_name="gpt-4o",
+            temperature=0.7,
+            openai_api_key=os.getenv("OPENAI_API_KEY")
+        )
+        st.session_state.conversation = ConversationChain(
+            llm=llm,
+            memory=memory,
+            verbose=False
+        )
+        st.rerun()
