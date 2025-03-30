@@ -102,76 +102,15 @@ if user_input:
             else:
                 st.error(f"An error occurred: {error_message}")
 
+# Add this in your sidebar section
 with st.sidebar:
     st.title("Options")
-
-    # Clear chat button (existing code)
-    if st.button("Clear Chat History"):
-        st.session_state.chat_history = []
-        memory = ConversationBufferMemory(return_messages=True)
-        llm = ChatOpenAI(
-            model_name="gpt-4o",
-            temperature=0.7,
-            openai_api_key=os.getenv("OPENAI_API_KEY")
-        )
-        st.session_state.conversation = ConversationChain(
-            llm=llm,
-            memory=memory,
-            verbose=False
-        )
-        st.rerun()
     
-    #  Export Chat 
-    if st.session_state.chat_history:  # Only show export button if there's chat history
-        # Create formatted chat text for export
-        chat_export = "\n\n".join([
-            f"{'User' if isinstance(msg, HumanMessage) else 'Assistant'}: {msg.content}" 
-            for msg in st.session_state.chat_history
-        ])
-        
-        # Download button
-        st.download_button(
-            label="Export Chat History",
-            data=chat_export,
-            file_name="chatbot_conversation.txt",
-            mime="text/plain",
-            help="Download the current conversation as a text file"
-        )
-
-    st.subheader("About")
-
-    st.markdown(
-        """ Chatbot uses:
-
-        - **Streamlit** for the interface
-        - **LangChain** for conversation
-        - **GPT-4o** as our language model
-        - **ConversationBufferMemory** to remember messages """
+    # Add personality selector - Creates a dropdown menu for users to choose different AI conversation styles
+    st.subheader("Chatbot Personality")
+    personality = st.selectbox(
+        "Select a personality for your chatbot:",
+        ["Helpful Assistant", "Friendly Teacher", "Creative Writer", "Technical Expert"]
     )
-# Adding some css configuration
-st.markdown("""
-<style>
-    .stApp {
-        max-width: 1200px;
-        margin: 0 auto;
-    }
-    .chat-message {
-        padding: 1.5rem;
-        border-radius: 0.5rem;
-        margin-bottom: 1rem;
-        display: flex;
-        flex-direction: column;
-    }
-    .chat-message.user {
-        background-color: #f0f2f6;
-    }
-    .chat-message.assistant {
-        background-color: #e6f7ff;
-    }
-    .chat-message .avatar {
-        width: 20px;
-        height: 20px;
-        margin-right: 10px;
-    }
-</style>
-""", unsafe_allow_html=True)
+    
+   
