@@ -192,7 +192,9 @@ with st.sidebar:
             # Update the conversation with the new personality
             st.session_state.conversation.prompt.template = f"{system_message}\n\nCurrent conversation:\n{{history}}\nHuman: {{input}}\nAI:"
             
-          
+            st.sidebar.success(f"Successfully switched to {personality} personality!")
+        except Exception as e:
+            st.sidebar.error(f"Error switching personality: {str(e)}")
     
     # Clear chat button - Resets the conversation history and reinitializes the chatbot
 if st.button("Clear Chat History"):
