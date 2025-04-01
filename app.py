@@ -172,7 +172,9 @@ with st.sidebar:
                 verbose=False
             )
             
-      
+            st.sidebar.success(f"Successfully switched to {model_name}")
+        except Exception as e:
+            st.sidebar.error(f"Error switching models: {str(e)}")
 
     # Add personality selector - Creates a dropdown menu for users to choose different AI conversation styles
     st.subheader("Chatbot Personality")
