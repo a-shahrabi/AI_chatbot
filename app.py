@@ -154,6 +154,12 @@ with st.sidebar:
     
     st.sidebar.write(f"Currently using model: {model_name}") 
 
+    # Add a button to apply model changes without clearing chat
+    if st.sidebar.button("Apply Model Change"):
+        try:
+            
+            st.sidebar.error(f"Error switching models: {str(e)}")
+
     # Add personality selector - Creates a dropdown menu for users to choose different AI conversation styles
     st.subheader("Chatbot Personality")
     personality = st.selectbox(
