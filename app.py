@@ -164,7 +164,15 @@ with st.sidebar:
                 openai_api_key=os.getenv("OPENAI_API_KEY")
             )
             
-           
+            # Update the conversation chain with the new model
+            memory = st.session_state.conversation.memory
+            st.session_state.conversation = ConversationChain(
+                llm=new_llm,
+                memory=memory,
+                verbose=False
+            )
+            
+      
 
     # Add personality selector - Creates a dropdown menu for users to choose different AI conversation styles
     st.subheader("Chatbot Personality")
