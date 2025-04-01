@@ -157,8 +157,14 @@ with st.sidebar:
     # Add a button to apply model changes without clearing chat
     if st.sidebar.button("Apply Model Change"):
         try:
+            # Update the model based on current selection
+            new_llm = ChatOpenAI(
+                model_name=model_name,
+                temperature=0.7,
+                openai_api_key=os.getenv("OPENAI_API_KEY")
+            )
             
-            st.sidebar.error(f"Error switching models: {str(e)}")
+           
 
     # Add personality selector - Creates a dropdown menu for users to choose different AI conversation styles
     st.subheader("Chatbot Personality")
