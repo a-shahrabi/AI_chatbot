@@ -182,6 +182,17 @@ with st.sidebar:
         "Select a personality for your chatbot:",
         ["Helpful Assistant", "Friendly Teacher", "Creative Writer", "Technical Expert"]
     )
+
+    # Add a button to apply personality changes without clearing chat
+    if st.sidebar.button("Apply Personality Change"):
+        try:
+            # Get the system message for the selected personality
+            system_message = get_system_message(personality)
+            
+            # Update the conversation with the new personality
+            st.session_state.conversation.prompt.template = f"{system_message}\n\nCurrent conversation:\n{{history}}\nHuman: {{input}}\nAI:"
+            
+          
     
     # Clear chat button - Resets the conversation history and reinitializes the chatbot
 if st.button("Clear Chat History"):
