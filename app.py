@@ -32,19 +32,24 @@ st.set_page_config(
     layout="centered"
 )
 
+# Set the main title of the application
 st.title("AI Chatbot")
+# Set the subtitle describing the technologies used
 st.subheader("Built with streamlit, Langchain and GPT-4o")
 
+# Initialize chat history if it doesn't exist in session state
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
 
 if "conversation" not in st.session_state:
     try:
+        # Get API key from environment variables
         api_key = os.getenv("OPENAI_API_KEY")
         if not api_key:
             st.error("OpenAI API key not found. Please check your .env file.")
             st.stop()
-            
+
+        # Initialize the language model with GPT-4o    
         llm = ChatOpenAI(
             model_name="gpt-4o",
             temperature=0.7,
