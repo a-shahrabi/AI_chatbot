@@ -28,9 +28,9 @@ def get_system_message(personality):
     
    # Helper function that returns appropriate system messages based on the selected personality
 def get_system_message(personality):
-    # (your existing function code)
+   
     
-# Add these new functions right here:
+
 def save_chat_history():
     """Save the current chat history to a local file"""
     if "chat_history" in st.session_state and st.session_state.chat_history:
@@ -42,7 +42,6 @@ def save_chat_history():
             elif isinstance(msg, AIMessage):
                 serializable_history.append({"role": "ai", "content": msg.content, "timestamp": datetime.now().isoformat()})
         
-        # Save to file with timestamp in filename for uniqueness
         filename = f"chat_history_{int(time.time())}.json"
         try:
             with open(filename, "w") as f:
@@ -104,10 +103,6 @@ def get_ai_response(user_input, max_retries=3, retry_delay=2):
             else:
                 # If all retries failed, raise the exception again
                 raise
-
-# Load environment variables from .env file
-load_dotenv()
-  
 
 
 # Load environment variables from .env file
@@ -196,10 +191,13 @@ with st.chat_message("assistant"):
     try:
         # First try with the LLM
         with st.spinner("Pondering..."):
-            response = st.session_state.conversation.predict(input=user_input)
+            # Use our new function with retry logic
+            response = get_ai_response(user_input)
             st.write(response)
         
         st.session_state.chat_history.append(AIMessage(content=response))
+        # Auto-save chat history after each successful response
+        save_chat_history()
     
     except Exception as e:
         error_message = str(e)
