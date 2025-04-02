@@ -26,7 +26,12 @@ def get_system_message(personality):
     else:
         return "You are a helpful AI assistant."
     
-    def save_chat_history():
+   # Helper function that returns appropriate system messages based on the selected personality
+def get_system_message(personality):
+    # (your existing function code)
+    
+# Add these new functions right here:
+def save_chat_history():
     """Save the current chat history to a local file"""
     if "chat_history" in st.session_state and st.session_state.chat_history:
         # Convert chat messages to serializable format
@@ -36,6 +41,74 @@ def get_system_message(personality):
                 serializable_history.append({"role": "human", "content": msg.content, "timestamp": datetime.now().isoformat()})
             elif isinstance(msg, AIMessage):
                 serializable_history.append({"role": "ai", "content": msg.content, "timestamp": datetime.now().isoformat()})
+        
+        # Save to file with timestamp in filename for uniqueness
+        filename = f"chat_history_{int(time.time())}.json"
+        try:
+            with open(filename, "w") as f:
+                json.dump(serializable_history, f)
+            return filename
+        except Exception as e:
+            st.warning(f"Could not save chat history: {str(e)}")
+            return None
+    return None
+
+def load_chat_history(filename):
+    """Load chat history from a file"""
+    try:
+        with open(filename, "r") as f:
+            serialized_history = json.load(f)
+        
+        # Convert back to LangChain message objects
+        history = []
+        for msg in serialized_history:
+            if msg["role"] == "human":
+                history.append(HumanMessage(content=msg["content"]))
+            elif msg["role"] == "ai":
+                history.append(AIMessage(content=msg["content"]))
+        
+        return history
+    except Exception as e:
+        st.warning(f"Could not load chat history: {str(e)}")
+        return []
+
+def get_ai_response(user_input, max_retries=3, retry_delay=2):
+    """Get AI response with retry logic for API errors"""
+    for attempt in range(max_retries):
+        try:
+            return st.session_state.conversation.predict(input=user_input)
+        except Exception as e:
+            error_message = str(e)
+            if attempt < max_retries - 1:
+                # If it's not the last attempt, retry after delay
+                time.sleep(retry_delay)
+                # If quota error, try fallback to cheaper model
+                if "quota" in error_message.lower() or "429" in error_message:
+                    try:
+                        # Temporarily switch to more affordable model
+                        backup_llm = ChatOpenAI(
+                            model_name="gpt-3.5-turbo",
+                            temperature=0.7,
+                            openai_api_key=os.getenv("OPENAI_API_KEY")
+                        )
+                        memory = st.session_state.conversation.memory
+                        temp_conversation = ConversationChain(
+                            llm=backup_llm,
+                            memory=memory,
+                            verbose=False
+                        )
+                        return temp_conversation.predict(input=user_input)
+                    except:
+                        # Continue with next retry if backup also fails
+                        continue
+            else:
+                # If all retries failed, raise the exception again
+                raise
+
+# Load environment variables from .env file
+load_dotenv()
+  
+
 
 # Load environment variables from .env file
 load_dotenv()
