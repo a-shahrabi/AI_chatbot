@@ -25,11 +25,6 @@ def get_system_message(personality):
         return "You are a technical expert. Provide detailed and accurate technical information. Use precise terminology."
     else:
         return "You are a helpful AI assistant."
-    
-   # Helper function that returns appropriate system messages based on the selected personality
-def get_system_message(personality):
-   
-    
 
 def save_chat_history():
     """Save the current chat history to a local file"""
@@ -291,7 +286,27 @@ with st.sidebar:
         except Exception as e:
             st.sidebar.error(f"Error switching personality: {str(e)}")
     
-    # Clear chat button - Resets the conversation history and reinitializes the chatbot
+    # Add chat history management section - NEW SECTION ADDED HERE
+    st.subheader("Chat History Management")
+    
+    # Option to save current chat explicitly
+    if st.sidebar.button("Save Current Chat"):
+        saved_file = save_chat_history()
+        if saved_file:
+            st.sidebar.success(f"Chat saved to {saved_file}")
+    
+    # Option to load a previous chat
+    history_files = [f for f in os.listdir('.') if f.startswith('chat_history_') and f.endswith('.json')]
+    if history_files:
+        selected_file = st.sidebar.selectbox("Load saved chat:", history_files)
+        if st.sidebar.button("Load Selected Chat"):
+            loaded_history = load_chat_history(selected_file)
+            if loaded_history:
+                st.session_state.chat_history = loaded_history
+                st.sidebar.success("Chat history loaded successfully!")
+                st.experimental_rerun()
+    
+# Clear chat button - Resets the conversation history and reinitializes the chatbot
 if st.button("Clear Chat History"):
     st.session_state.chat_history = []
     memory = ConversationBufferMemory(return_messages=True)
