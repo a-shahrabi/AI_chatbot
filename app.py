@@ -7,6 +7,9 @@ from langchain.memory import ConversationBufferMemory
 from langchain.chains import ConversationChain
 from langchain.schema import HumanMessage, AIMessage
 from langchain_community.llms import Ollama
+import json
+import time
+from datetime import datetime
 
 
 # Helper function that returns appropriate system messages based on the selected personality
@@ -22,6 +25,17 @@ def get_system_message(personality):
         return "You are a technical expert. Provide detailed and accurate technical information. Use precise terminology."
     else:
         return "You are a helpful AI assistant."
+    
+    def save_chat_history():
+    """Save the current chat history to a local file"""
+    if "chat_history" in st.session_state and st.session_state.chat_history:
+        # Convert chat messages to serializable format
+        serializable_history = []
+        for msg in st.session_state.chat_history:
+            if isinstance(msg, HumanMessage):
+                serializable_history.append({"role": "human", "content": msg.content, "timestamp": datetime.now().isoformat()})
+            elif isinstance(msg, AIMessage):
+                serializable_history.append({"role": "ai", "content": msg.content, "timestamp": datetime.now().isoformat()})
 
 # Load environment variables from .env file
 load_dotenv()
@@ -56,12 +70,15 @@ if "conversation" not in st.session_state:
             openai_api_key=api_key
         )
 
+        # Create memory object to store conversation history    
         memory = ConversationBufferMemory(return_messages=True)
         st.session_state.conversation = ConversationChain(
             llm=llm,
             memory=memory,
             verbose=False
         )
+
+    # Handle any exceptions during initialization    
     except Exception as e:
         st.error(f"Error initializing the chatbot: {str(e)}")
         st.stop()
