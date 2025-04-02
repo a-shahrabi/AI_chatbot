@@ -22,9 +22,11 @@ def get_system_message(personality):
         return "You are a technical expert. Provide detailed and accurate technical information. Use precise terminology."
     else:
         return "You are a helpful AI assistant."
-    
+
+# Load environment variables from .env file
 load_dotenv()
 
+# Configure the page layout and title
 st.set_page_config(
     page_title="AI Chatbot",
     layout="centered"
