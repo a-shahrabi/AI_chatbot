@@ -43,9 +43,12 @@ def save_chat_history():
             # Open the file in write mode and save the chat history in JSON format
             with open(filename, "w") as f:
                 json.dump(serializable_history, f)
+            # Return the filename so it can be referenced later
             return filename
         except Exception as e:
+            # Display a warning if saving fails and explain the error
             st.warning(f"Could not save chat history: {str(e)}")
+            # Return None to indicate the save operation failed
             return None
     return None
 
