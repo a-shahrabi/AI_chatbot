@@ -37,6 +37,7 @@ def save_chat_history():
             elif isinstance(msg, AIMessage):
                 serializable_history.append({"role": "ai", "content": msg.content, "timestamp": datetime.now().isoformat()})
         
+        # Generates a unique filename for the chat history using the current timestamp
         filename = f"chat_history_{int(time.time())}.json"
         try:
             with open(filename, "w") as f:
