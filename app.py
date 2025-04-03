@@ -40,6 +40,7 @@ def save_chat_history():
         # Generates a unique filename for the chat history using the current timestamp
         filename = f"chat_history_{int(time.time())}.json"
         try:
+            # Open the file in write mode and save the chat history in JSON format
             with open(filename, "w") as f:
                 json.dump(serializable_history, f)
             return filename
