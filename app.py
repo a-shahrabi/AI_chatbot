@@ -57,11 +57,13 @@ def save_chat_history():
             # Return None to indicate the save operation failed
             return None
     return None
-
 def load_chat_history(filename):
     """Load chat history from a file"""
     try:
+        # Open the specified filename in read mode
         with open(filename, "r") as f:
+            # Parse the JSON content of the file into a Python object
+            # This converts the stored JSON string back into a Python data structure
             serialized_history = json.load(f)
         
         # Convert back to LangChain message objects
