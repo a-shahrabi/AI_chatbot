@@ -1,88 +1,70 @@
-import streamlit as st  # Main framework for creating web apps
-import os  # For accessing environment variables and file operations
-from dotenv import load_dotenv  # For loading environment variables from .env file
-from langchain_community.chat_models import ChatOpenAI  # LLM model wrapper
-from langchain.memory import ConversationBufferMemory  # For storing conversation history
-from langchain.chains import ConversationChain  # For creating conversation flow
-from langchain.schema import HumanMessage, AIMessage  # Message schema types
-from langchain.callbacks.streamlit import StreamlitCallbackHandler  # For streaming responses
-import json  # For serializing/deserializing chat history
-import time  # For timestamps and delays
-from datetime import datetime  # For detailed timestamps
+import streamlit as st
+import os
+from dotenv import load_dotenv
+from langchain_community.chat_models import ChatOpenAI
+from langchain.memory import ConversationBufferMemory
+from langchain.chains import ConversationChain
+from langchain.schema import HumanMessage, AIMessage
+import json
+import time
+from datetime import datetime
 
-# Load environment variables from .env file (including OPENAI_API_KEY)
+# Load environment variables from .env file
 load_dotenv()
 
-# Configure the Streamlit page layout and title
+# Configure the page layout and title
 st.set_page_config(
-    page_title="AI Chatbot",  # Browser tab title
-    layout="centered"  # Centered layout for better readability
+    page_title="AI Chatbot",
+    layout="centered"
 )
 
 # Helper function that returns appropriate system messages based on the selected personality
 def get_system_message(personality):
-    """
-    Return a system message based on the selected personality
-    Each personality has a unique prompt that guides the AI's behavior
-    """
-    personalities = {
-        "Helpful Assistant": "You are a helpful AI assistant. You provide clear and concise answers to user questions.",
-        "Friendly Teacher": "You are a friendly teacher. Explain concepts in simple terms and use examples to help users understand.",
-        "Creative Writer": "You are a creative writing assistant. Help users with creative and engaging content. Be imaginative and inspiring.",
-        "Technical Expert": "You are a technical expert. Provide detailed and accurate technical information. Use precise terminology."
-    }
-    # Return the corresponding system message or default if personality not found
-    return personalities.get(personality, "You are a helpful AI assistant.")
+    """Return a system message based on the selected personality"""
+    if personality == "Helpful Assistant":
+        return "You are a helpful AI assistant. You provide clear and concise answers to user questions."
+    elif personality == "Friendly Teacher":
+        return "You are a friendly teacher. Explain concepts in simple terms and use examples to help users understand."
+    elif personality == "Creative Writer":
+        return "You are a creative writing assistant. Help users with creative and engaging content. Be imaginative and inspiring."
+    elif personality == "Technical Expert":
+        return "You are a technical expert. Provide detailed and accurate technical information. Use precise terminology."
+    else:
+        return "You are a helpful AI assistant."
 
 def save_chat_history():
-    """
-    Save the current chat history to a local file
-    Creates a JSON file with timestamped messages
-    """
+    """Save the current chat history to a local file"""
     if "chat_history" in st.session_state and st.session_state.chat_history:
         # Convert chat messages to serializable format
         serializable_history = []
         for msg in st.session_state.chat_history:
             if isinstance(msg, HumanMessage):
-                # Format human messages
-                serializable_history.append({
-                    "role": "human", 
-                    "content": msg.content, 
-                    "timestamp": datetime.now().isoformat()
-                })
+                serializable_history.append({"role": "human", "content": msg.content, "timestamp": datetime.now().isoformat()})
             elif isinstance(msg, AIMessage):
-                # Format AI messages
-                serializable_history.append({
-                    "role": "ai", 
-                    "content": msg.content, 
-                    "timestamp": datetime.now().isoformat()
-                })
+                serializable_history.append({"role": "ai", "content": msg.content, "timestamp": datetime.now().isoformat()})
         
-        # Generate a unique filename using current timestamp
+        # Generates a unique filename for the chat history using the current timestamp
         filename = f"chat_history_{int(time.time())}.json"
         try:
-            # Write the serialized history to a JSON file
+            # Open the file in write mode and save the chat history in JSON format
             with open(filename, "w") as f:
                 json.dump(serializable_history, f)
-            # Return the filename for reference
+            # Return the filename so it can be referenced later
             return filename
         except Exception as e:
-            # Handle any errors during saving
+            # Display a warning if saving fails and explain the error
             st.warning(f"Could not save chat history: {str(e)}")
+            # Return None to indicate the save operation failed
             return None
     return None
 
 def load_chat_history(filename):
-    """
-    Load chat history from a JSON file
-    Converts stored messages back to LangChain message objects
-    """
+    """Load chat history from a file"""
     try:
-        # Read the JSON file
         with open(filename, "r") as f:
             serialized_history = json.load(f)
         
-        # Convert serialized messages back to LangChain message objects
+        # Convert back to LangChain message objects
         history = []
         for msg in serialized_history:
             if msg["role"] == "human":
@@ -92,90 +74,11 @@ def load_chat_history(filename):
         
         return history
     except Exception as e:
-        # Handle any errors during loading
         st.warning(f"Could not load chat history: {str(e)}")
         return []
 
-def get_ai_response_with_streaming(user_input, message_placeholder, max_retries=3, retry_delay=2):
-    """
-    Get AI response with streaming UI updates and retry logic for API errors
-    
-    Args:
-        user_input: The text input from the user
-        message_placeholder: Streamlit placeholder for displaying streamed response
-        max_retries: Maximum number of retry attempts
-        retry_delay: Seconds to wait between retries
-        
-    Returns:
-        The AI's complete response text
-    """
-    for attempt in range(max_retries):
-        try:
-            # Create a StreamlitCallbackHandler for streaming
-            stream_handler = StreamlitCallbackHandler(message_placeholder)
-            
-            # Stream the response
-            response = st.session_state.conversation.predict(
-                input=user_input,
-                callbacks=[stream_handler]
-            )
-            return response
-            
-        except Exception as e:
-            error_message = str(e)
-            
-            # If not the last attempt, try again
-            if attempt < max_retries - 1:
-                # Wait before retrying to avoid overwhelming the API
-                time.sleep(retry_delay)
-                message_placeholder.info(f"Retrying... (attempt {attempt + 2}/{max_retries})")
-                
-                # If it's a quota error, try fallback to a cheaper model
-                if "quota" in error_message.lower() or "429" in error_message:
-                    try:
-                        message_placeholder.info("Attempting to use a more affordable model...")
-                        # Temporarily switch to more affordable model
-                        backup_llm = ChatOpenAI(
-                            model_name="gpt-3.5-turbo",  # Cheaper, more available model
-                            temperature=0.7,  # Control randomness (0.0 = deterministic, 1.0 = creative)
-                            openai_api_key=os.getenv("OPENAI_API_KEY"),
-                            streaming=True  # Ensure streaming is enabled
-                        )
-                        # Preserve the conversation memory
-                        memory = st.session_state.conversation.memory
-                        # Create temporary conversation with backup model
-                        temp_conversation = ConversationChain(
-                            llm=backup_llm,
-                            memory=memory,
-                            verbose=False
-                        )
-                        # Stream the response with the backup model
-                        backup_stream_handler = StreamlitCallbackHandler(message_placeholder)
-                        response = temp_conversation.predict(
-                            input=user_input,
-                            callbacks=[backup_stream_handler]
-                        )
-                        return response
-                    except Exception as backup_error:
-                        # Continue to next retry attempt if backup also fails
-                        message_placeholder.warning(f"Backup model failed: {str(backup_error)}")
-                        continue
-            else:
-                # If all retries fail, reraise the exception
-                raise
-
 def initialize_conversation(model_name="gpt-3.5-turbo", personality="Helpful Assistant"):
-    """
-    Initialize or reinitialize the conversation with specified settings
-    
-    Args:
-        model_name: The OpenAI model to use
-        personality: The conversation personality to apply
-        
-    Returns:
-        A configured ConversationChain instance
-    """
-    # Get API key from environment variables
+    """Initialize or reinitialize the conversation with specified settings"""
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
         st.error("OpenAI API key not found. Please check your .env file.")
@@ -184,48 +87,67 @@ def initialize_conversation(model_name="gpt-3.5-turbo", personality="Helpful Ass
     # Get system message for selected personality
     system_message = get_system_message(personality)
     
-    # Initialize the language model with streaming enabled
+    # Initialize the language model
     llm = ChatOpenAI(
         model_name=model_name,
-        temperature=0.7,  # Balanced between deterministic and creative responses
-        openai_api_key=api_key,
-        streaming=True  # Enable streaming for the model
+        temperature=0.7,
+        openai_api_key=api_key
     )
 
-    # Create memory object to store conversation history
+    # Create memory object and conversation chain
     memory = ConversationBufferMemory(return_messages=True)
-    
-    # Create the conversation chain that connects the LLM with memory
     conversation = ConversationChain(
         llm=llm,
         memory=memory,
-        verbose=False  # Set to True for debugging
+        verbose=False
     )
     
     # Set the system message in the conversation prompt template
-    # This influences how the AI responds based on personality
     conversation.prompt.template = f"{system_message}\n\nCurrent conversation:\n{{history}}\nHuman: {{input}}\nAI:"
     
     return conversation
 
-# -------------------- MAIN APPLICATION --------------------
+def get_rule_based_response(user_input):
+    """Generate a simple rule-based response when API is unavailable"""
+    # Default fallback message
+    response = "I'm in fallback mode due to API limitations. I can only provide basic responses at the moment."
+    
+    # Check for common patterns in user input
+    if any(greeting in user_input.lower() for greeting in ["hello", "hi", "hey"]):
+        response = "Hello! I'm currently running in fallback mode. How can I help you?"
+    elif "how are you" in user_input.lower():
+        response = "I'm doing well, though I'm currently operating in a limited fallback mode."
+    elif "help" in user_input.lower():
+        response = "I'm in fallback mode right now, but I'd be happy to help as best I can."
+    elif any(thanks in user_input.lower() for thanks in ["thank", "thanks", "appreciate"]):
+        response = "You're welcome! Happy to assist even in fallback mode."
+    # Question patterns
+    elif any(q_word in user_input.lower() for q_word in ["what is", "who is", "how to", "where", "when", "why"]):
+        response = f"That's an interesting question about '{user_input}'. When I'm back to full functionality, I'll provide a more detailed answer."
+    elif "?" in user_input:
+        response = "That's a good question. Unfortunately, I'm currently in fallback mode and can't provide a complete answer."
+    
+    return response
 
-# Set the main title and subtitle
+# Set the main title of the application
 st.title("AI Chatbot")
+# Set the subtitle describing the technologies used
 st.subheader("Built with streamlit, Langchain and GPT-4o")
 
 # Initialize session state variables if they don't exist
-# These persist across reruns of the app
 if "chat_history" not in st.session_state:
-    st.session_state.chat_history = []  # Store message history
+    st.session_state.chat_history = []
 
 if "model_name" not in st.session_state:
     st.session_state.model_name = "gpt-3.5-turbo"  # Default to cheaper model
 
 if "personality" not in st.session_state:
-    st.session_state.personality = "Helpful Assistant"  # Default personality
+    st.session_state.personality = "Helpful Assistant"
 
-# Initialize conversation if it doesn't exist in session state
+if "fallback_mode" not in st.session_state:
+    st.session_state.fallback_mode = False
+
+# Initialize conversation if it doesn't exist
 if "conversation" not in st.session_state:
     try:
         st.session_state.conversation = initialize_conversation(
@@ -234,21 +156,19 @@ if "conversation" not in st.session_state:
         )
     except Exception as e:
         st.error(f"Error initializing the chatbot: {str(e)}")
-        st.stop()  # Stop execution if initialization fails
+        # Set fallback mode to true if there's an error on startup
+        st.session_state.fallback_mode = True
 
 # Display chat history
-# This renders all previous messages in the chat
 for message in st.session_state.chat_history:
     if isinstance(message, HumanMessage):
-        # Display user messages with user avatar
         with st.chat_message("user"):
             st.write(message.content)
     else:
-        # Display AI messages with assistant avatar
         with st.chat_message("assistant"):
             st.write(message.content)
 
-# Chat input box at the bottom of the chat area
+# Take user input
 user_input = st.chat_input("Type your message...")
 
 # Process user input and generate response
@@ -256,113 +176,107 @@ if user_input:
     # Add the user's message to the chat history
     st.session_state.chat_history.append(HumanMessage(content=user_input))
     
-    # Display the user's message in the UI
+    # Display the user's message
     with st.chat_message("user"):
         st.write(user_input)
     
     # Generate and display the assistant's response
-    with st.chat_message("assistant") as assistant_message:
-        try:
-            # Create a placeholder for streaming text
-            message_placeholder = st.empty()
-            
-            # Get AI response with streaming
-            response = get_ai_response_with_streaming(user_input, message_placeholder)
-            
-            # Add complete response to chat history
+    with st.chat_message("assistant"):
+        # If already in fallback mode, don't attempt API calls
+        if st.session_state.fallback_mode:
+            response = get_rule_based_response(user_input)
+            st.write(response)
             st.session_state.chat_history.append(AIMessage(content=response))
+        else:
+            try:
+                # Show spinner while processing
+                with st.spinner("Thinking..."):
+                    # Standard API call without streaming
+                    llm = st.session_state.conversation.llm
+                    memory = st.session_state.conversation.memory
+                    
+                    # Try to get response from LLM
+                    try:
+                        response = st.session_state.conversation.predict(input=user_input)
+                        st.write(response)
+                        st.session_state.chat_history.append(AIMessage(content=response))
+                        save_chat_history()
+                    except Exception as api_error:
+                        error_str = str(api_error).lower()
+                        
+                        # Check for quota or rate limiting errors
+                        if any(term in error_str for term in ["quota", "rate", "429", "insufficient"]):
+                            st.warning("Using fallback mode due to API limitations")
+                            st.session_state.fallback_mode = True
+                            
+                            # Generate rule-based response
+                            fallback_response = get_rule_based_response(user_input)
+                            st.write(fallback_response)
+                            st.session_state.chat_history.append(AIMessage(content=fallback_response))
+                        else:
+                            # For other API errors
+                            st.error(f"API error: {str(api_error)}")
+                            error_response = "I encountered an error processing your request. Please try again."
+                            st.write(error_response)
+                            st.session_state.chat_history.append(AIMessage(content=error_response))
             
-            # Auto-save chat history after each successful response
-            save_chat_history()
-        
-        except Exception as e:
-            error_message = str(e)
-            
-            # Rule-based fallback response if API has issues
-            if "quota" in error_message.lower() or "429" in error_message or "insufficient_quota" in error_message.lower():
-                st.warning("Using fallback mode due to API limitations")
-                
-                # Simple rule-based responses based on keywords in user input
-                # This allows basic functionality even when API access fails
-                fallback_responses = {
-                    "hello": "Hello! I'm currently running in fallback mode. How can I help you?",
-                    "hi": "Hello! I'm currently running in fallback mode. How can I help you?",
-                    "how are you": "I'm doing well, though I'm currently operating in a limited fallback mode.",
-                    "help": "I'm in fallback mode right now, but I'd be happy to help as best I can.",
-                    "thank": "You're welcome! Happy to assist even in fallback mode."
-                }
-                
-                # Default fallback message
-                response = "I'm in fallback mode due to API limitations. I can only provide basic responses at the moment."
-                
-                # Check for keywords in user input to provide better responses
-                for keyword, canned_response in fallback_responses.items():
-                    if keyword in user_input.lower():
-                        response = canned_response
-                        break
-                
-                # Special handling for question patterns
-                if "what is" in user_input.lower() or "who is" in user_input.lower() or "how to" in user_input.lower():
-                    response = f"That's an interesting question about '{user_input}'. When I'm back to full functionality, I'll provide a more detailed answer."
-                elif "?" in user_input:
-                    response = "That's a good question. Unfortunately, I'm currently in fallback mode and can't provide a complete answer."
-                
-                # Display the fallback response
-                st.write(response)
-                
-                # Add fallback response to chat history
-                st.session_state.chat_history.append(AIMessage(content=response))
-            else:
-                # For other errors, display the error message
-                st.error(f"An error occurred: {error_message}")
+            except Exception as e:
+                # Handle any other errors
+                st.error(f"An unexpected error occurred: {str(e)}")
+                error_response = "I encountered an unexpected error. Please try again later."
+                st.write(error_response)
+                st.session_state.chat_history.append(AIMessage(content=error_response))
+                # Switch to fallback mode for safety
+                st.session_state.fallback_mode = True
 
+# Sidebar section for user options and controls
 with st.sidebar:
     st.title("Options")
     
-    # Model selection dropdown
+    # Fallback mode status and control
+    st.subheader("Fallback Mode")
+    st.write(f"Status: {'Active' if st.session_state.fallback_mode else 'Inactive'}")
+    
+    if st.session_state.fallback_mode and st.button("Try API Again"):
+        st.session_state.fallback_mode = False
+        st.success("Fallback mode deactivated. Will try using the API for the next message.")
+    
+    # Model selection
     st.subheader("Model Selection")
     model_name = st.selectbox(
         "Select OpenAI model:",
-        ["gpt-3.5-turbo", "gpt-4o"],  # Available models
-        index=0 if st.session_state.model_name == "gpt-3.5-turbo" else 1,  # Set current selection
-        help="GPT-3.5 Turbo uses less API quota than GPT-4o"  # Helpful tooltip
+        ["gpt-3.5-turbo", "gpt-4o"],
+        index=0 if st.session_state.model_name == "gpt-3.5-turbo" else 1,
+        help="GPT-3.5 Turbo uses less API quota than GPT-4o"
     )
     
-    # Display currently active model
     st.write(f"Currently using model: {st.session_state.model_name}")
 
-    # Button to apply model change
+    # Apply model change button
     if st.button("Apply Model Change"):
         try:
-            # Update session state with new model
+            # Update session state
             st.session_state.model_name = model_name
             
-            # Create new conversation with the selected model but keep the chat history
-            memory = st.session_state.conversation.memory  # Preserve existing memory
-            new_llm = ChatOpenAI(
-                model_name=model_name,
-                temperature=0.7,
-                openai_api_key=os.getenv("OPENAI_API_KEY"),
-                streaming=True  # Ensure streaming is enabled
-            )
+            # If we're in fallback mode, don't try to create a new conversation
+            if not st.session_state.fallback_mode:
+                # Create new conversation with the selected model but keep the chat history
+                memory = st.session_state.conversation.memory
+                
+                # Update the conversation with new model
+                st.session_state.conversation = initialize_conversation(
+                    model_name=model_name,
+                    personality=st.session_state.personality
+                )
+                st.session_state.conversation.memory = memory
             
-            # Update the conversation chain with the new model
-            st.session_state.conversation = ConversationChain(
-                llm=new_llm,
-                memory=memory,
-                verbose=False
-            )
-            
-            # Reapply system message based on current personality
-            system_message = get_system_message(st.session_state.personality)
-            st.session_state.conversation.prompt.template = f"{system_message}\n\nCurrent conversation:\n{{history}}\nHuman: {{input}}\nAI:"
-            
-            # Show success message
-            st.success(f"Successfully switched to {model_name}")
+            st.success(f"Model changed to {model_name}")
         except Exception as e:
             st.error(f"Error switching models: {str(e)}")
+            # If error occurs during model switch, enable fallback mode
+            st.session_state.fallback_mode = True
 
-    # Personality selector dropdown
+    # Personality selector
     st.subheader("Chatbot Personality")
     personality = st.selectbox(
         "Select a personality for your chatbot:",
@@ -370,33 +284,34 @@ with st.sidebar:
         index=["Helpful Assistant", "Friendly Teacher", "Creative Writer", "Technical Expert"].index(st.session_state.personality)
     )
 
-    # Button to apply personality change
+    # Apply personality change button
     if st.button("Apply Personality Change"):
         try:
-            # Update session state with new personality
+            # Update session state
             st.session_state.personality = personality
             
-            # Get the system message for the selected personality
-            system_message = get_system_message(personality)
+            # Only update the prompt if not in fallback mode
+            if not st.session_state.fallback_mode:
+                # Get the system message for the selected personality
+                system_message = get_system_message(personality)
+                
+                # Update the conversation prompt template with the new personality
+                st.session_state.conversation.prompt.template = f"{system_message}\n\nCurrent conversation:\n{{history}}\nHuman: {{input}}\nAI:"
             
-            # Update the conversation prompt template with the new personality
-            st.session_state.conversation.prompt.template = f"{system_message}\n\nCurrent conversation:\n{{history}}\nHuman: {{input}}\nAI:"
-            
-            # Show success message
-            st.success(f"Successfully switched to {personality} personality!")
+            st.success(f"Personality changed to {personality}")
         except Exception as e:
             st.error(f"Error switching personality: {str(e)}")
     
     # Chat history management section
     st.subheader("Chat History Management")
     
-    # Button to save current chat
+    # Option to save current chat explicitly
     if st.button("Save Current Chat"):
         saved_file = save_chat_history()
         if saved_file:
             st.success(f"Chat saved to {saved_file}")
     
-    # Dropdown to load previous chats
+    # Option to load a previous chat
     history_files = [f for f in os.listdir('.') if f.startswith('chat_history_') and f.endswith('.json')]
     if history_files:
         selected_file = st.selectbox("Load saved chat:", history_files)
@@ -405,22 +320,30 @@ with st.sidebar:
             if loaded_history:
                 st.session_state.chat_history = loaded_history
                 st.success("Chat history loaded successfully!")
-                st.experimental_rerun()  # Refresh UI to show loaded chat
+                st.experimental_rerun()
 
-# Clear chat button at the bottom of the main area
+# Clear chat button
 if st.button("Clear Chat History"):
-    # Reset the chat history
+    # Reset the chat history and fallback mode
     st.session_state.chat_history = []
+    st.session_state.fallback_mode = False
     
-    # Reinitialize the conversation with current settings
-    st.session_state.conversation = initialize_conversation(
-        model_name=st.session_state.model_name,
-        personality=st.session_state.personality
-    )
+    # Try to reinitialize the conversation with current settings
+    try:
+        st.session_state.conversation = initialize_conversation(
+            model_name=st.session_state.model_name,
+            personality=st.session_state.personality
+        )
+        st.success(f"Chat cleared. Using {st.session_state.model_name} with {st.session_state.personality} personality.")
+    except Exception as e:
+        st.error(f"Error reinitializing conversation: {str(e)}")
+        st.session_state.fallback_mode = True
+        st.warning("Started in fallback mode due to API issues.")
     
-    # Show success message
-    st.success(f"Chat cleared. Using {st.session_state.model_name} with {st.session_state.personality} personality.")
-    st.rerun()  # Refresh the UI
+    st.rerun()
 
-# Information tip about model usage
-st.info("💡 If you encounter quota errors, use gpt-3.5-turbo which is more affordable.")
+# Information about current mode
+if st.session_state.fallback_mode:
+    st.warning("⚠️ Running in fallback mode due to API limitations. Responses are rule-based and limited.")
+else:
+    st.info("💡 If you encounter quota errors, use gpt-3.5-turbo which is more affordable.")
