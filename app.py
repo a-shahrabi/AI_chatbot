@@ -72,6 +72,7 @@ def load_chat_history(filename):
             if msg["role"] == "human":
                 history.append(HumanMessage(content=msg["content"]))
             elif msg["role"] == "ai":
+                # Create an AIMessage object with the stored content and add to history
                 history.append(AIMessage(content=msg["content"]))
         
         return history
@@ -81,6 +82,7 @@ def load_chat_history(filename):
 
 def initialize_conversation(model_name="gpt-3.5-turbo", personality="Helpful Assistant"):
     """Initialize or reinitialize the conversation with specified settings"""
+    # Get the OpenAI API key from environment variables
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
         st.error("OpenAI API key not found. Please check your .env file.")
