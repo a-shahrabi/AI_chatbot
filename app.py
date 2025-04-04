@@ -5,6 +5,7 @@ from langchain_community.chat_models import ChatOpenAI  # LLM model wrapper
 from langchain.memory import ConversationBufferMemory  # For storing conversation history
 from langchain.chains import ConversationChain  # For creating conversation flow
 from langchain.schema import HumanMessage, AIMessage  # Message schema types
+from langchain.callbacks.streamlit import StreamlitCallbackHandler  # For streaming responses
 import json  # For serializing/deserializing chat history
 import time  # For timestamps and delays
 from datetime import datetime  # For detailed timestamps
@@ -95,37 +96,50 @@ def load_chat_history(filename):
         st.warning(f"Could not load chat history: {str(e)}")
         return []
 
-def get_ai_response(user_input, max_retries=3, retry_delay=2):
+def get_ai_response_with_streaming(user_input, message_placeholder, max_retries=3, retry_delay=2):
     """
-    Get AI response with retry logic for API errors
-    Implements backoff strategy and fallback to cheaper model
+    Get AI response with streaming UI updates and retry logic for API errors
     
     Args:
         user_input: The text input from the user
+        message_placeholder: Streamlit placeholder for displaying streamed response
         max_retries: Maximum number of retry attempts
         retry_delay: Seconds to wait between retries
         
     Returns:
-        The AI's response text
+        The AI's complete response text
     """
     for attempt in range(max_retries):
         try:
-            # Try to get a response from the current model
-            return st.session_state.conversation.predict(input=user_input)
+            # Create a StreamlitCallbackHandler for streaming
+            stream_handler = StreamlitCallbackHandler(message_placeholder)
+            
+            # Stream the response
+            response = st.session_state.conversation.predict(
+                input=user_input,
+                callbacks=[stream_handler]
+            )
+            return response
+            
         except Exception as e:
             error_message = str(e)
+            
             # If not the last attempt, try again
             if attempt < max_retries - 1:
                 # Wait before retrying to avoid overwhelming the API
                 time.sleep(retry_delay)
+                message_placeholder.info(f"Retrying... (attempt {attempt + 2}/{max_retries})")
+                
                 # If it's a quota error, try fallback to a cheaper model
                 if "quota" in error_message.lower() or "429" in error_message:
                     try:
+                        message_placeholder.info("Attempting to use a more affordable model...")
                         # Temporarily switch to more affordable model
                         backup_llm = ChatOpenAI(
                             model_name="gpt-3.5-turbo",  # Cheaper, more available model
                             temperature=0.7,  # Control randomness (0.0 = deterministic, 1.0 = creative)
-                            openai_api_key=os.getenv("OPENAI_API_KEY")
+                            openai_api_key=os.getenv("OPENAI_API_KEY"),
+                            streaming=True  # Ensure streaming is enabled
                         )
                         # Preserve the conversation memory
                         memory = st.session_state.conversation.memory
@@ -135,9 +149,16 @@ def get_ai_response(user_input, max_retries=3, retry_delay=2):
                             memory=memory,
                             verbose=False
                         )
-                        return temp_conversation.predict(input=user_input)
-                    except:
+                        # Stream the response with the backup model
+                        backup_stream_handler = StreamlitCallbackHandler(message_placeholder)
+                        response = temp_conversation.predict(
+                            input=user_input,
+                            callbacks=[backup_stream_handler]
+                        )
+                        return response
+                    except Exception as backup_error:
                         # Continue to next retry attempt if backup also fails
+                        message_placeholder.warning(f"Backup model failed: {str(backup_error)}")
                         continue
             else:
                 # If all retries fail, reraise the exception
@@ -163,11 +184,12 @@ def initialize_conversation(model_name="gpt-3.5-turbo", personality="Helpful Ass
     # Get system message for selected personality
     system_message = get_system_message(personality)
     
-    # Initialize the language model
+    # Initialize the language model with streaming enabled
     llm = ChatOpenAI(
         model_name=model_name,
         temperature=0.7,  # Balanced between deterministic and creative responses
-        openai_api_key=api_key
+        openai_api_key=api_key,
+        streaming=True  # Enable streaming for the model
     )
 
     # Create memory object to store conversation history
@@ -239,14 +261,15 @@ if user_input:
         st.write(user_input)
     
     # Generate and display the assistant's response
-    with st.chat_message("assistant"):
+    with st.chat_message("assistant") as assistant_message:
         try:
-            # Get AI response with retry logic
-            with st.spinner("Pondering..."):  # Show a spinner while processing
-                response = get_ai_response(user_input)
-                st.write(response)  # Display the response
+            # Create a placeholder for streaming text
+            message_placeholder = st.empty()
             
-            # Add response to chat history
+            # Get AI response with streaming
+            response = get_ai_response_with_streaming(user_input, message_placeholder)
+            
+            # Add complete response to chat history
             st.session_state.chat_history.append(AIMessage(content=response))
             
             # Auto-save chat history after each successful response
@@ -293,7 +316,6 @@ if user_input:
                 # For other errors, display the error message
                 st.error(f"An error occurred: {error_message}")
 
-# -------------------- SIDEBAR CONTROLS --------------------
 with st.sidebar:
     st.title("Options")
     
@@ -320,7 +342,8 @@ with st.sidebar:
             new_llm = ChatOpenAI(
                 model_name=model_name,
                 temperature=0.7,
-                openai_api_key=os.getenv("OPENAI_API_KEY")
+                openai_api_key=os.getenv("OPENAI_API_KEY"),
+                streaming=True  # Ensure streaming is enabled
             )
             
             # Update the conversation chain with the new model
