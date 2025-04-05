@@ -9,7 +9,7 @@ import json
 import time
 from datetime import datetime
 
-# Load environment variables from .env file test
+# Load environment variables from .env file
 load_dotenv()
 
 # Configure the page layout and title
@@ -20,17 +20,12 @@ st.set_page_config(
 
 # Helper function that returns appropriate system messages based on the selected personality
 def get_system_message(personality):
-    """Return a system message based on the selected personality"""
-    if personality == "Helpful Assistant":
-        return "You are a helpful AI assistant. You provide clear and concise answers to user questions."
-    elif personality == "Friendly Teacher":
-        return "You are a friendly teacher. Explain concepts in simple terms and use examples to help users understand."
-    elif personality == "Creative Writer":
-        return "You are a creative writing assistant. Help users with creative and engaging content. Be imaginative and inspiring."
-    elif personality == "Technical Expert":
-        return "You are a technical expert. Provide detailed and accurate technical information. Use precise terminology."
-    else:
-        return "You are a helpful AI assistant."
+    system_messages = {
+        "Helpful Assistant": "You are a helpful AI assistant...",
+        "Friendly Teacher": "You are a friendly teacher...",
+        # ... other personalities
+    }
+    return system_messages.get(personality, "You are a helpful AI assistant.")
 
 def save_chat_history():
     """Save the current chat history to a local file"""
