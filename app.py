@@ -9,6 +9,19 @@ import json
 import time
 from datetime import datetime
 
+
+from langchain_community.document_loaders import (
+    PyPDFLoader, 
+    TextLoader, 
+    CSVLoader,
+    Docx2txtLoader
+)
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_community.vectorstores import FAISS
+from langchain_openai import OpenAIEmbeddings
+from langchain.chains import RetrievalQA
+from langchain.prompts import PromptTemplate
+
 # Load environment variables from .env file
 load_dotenv()
 
