@@ -1,18 +1,20 @@
 # AI Chatbot
 
-A sophisticated AI chatbot built with Streamlit, LangChain, and OpenAI's GPT models.
+A sophisticated AI chatbot built with Streamlit, LangChain, and OpenAI's GPT models, featuring knowledge base integration.
 
 ![Chatbot Preview](https://raw.githubusercontent.com/username/ai-chatbot/main/preview.png)
 
 ## Features
 
 - **Intelligent Conversations**: Powered by OpenAI's GPT models
-- **Voice Input**: Speak to your AI assistant instead of typing
-- **Typing Animation**: Realistic typing effect for more natural interaction
-- **Customizable Settings**: Adjust temperature and choose between different models
+- **Knowledge Base Integration**: Upload documents for the bot to reference when answering questions
+- **RAG (Retrieval-Augmented Generation)**: Provides more accurate, grounded responses based on your documents
+- **Multiple Document Formats**: Support for PDF, TXT, CSV, and DOCX files
+- **Adjustable Personalities**: Choose between Helpful Assistant, Friendly Teacher, Creative Writer, or Technical Expert
+- **Multiple Models**: Select between GPT-3.5-turbo and GPT-4o
 - **Conversation Memory**: Chatbot remembers the context of your conversation
-- **Export Functionality**: Download your chat history as a text file
-- **User Feedback System**: Rate responses with thumbs up/down
+- **Chat History Management**: Save and load previous conversations
+- **Fallback Mode**: Continues to function with basic responses when API is unavailable
 - **Responsive Design**: Works on desktop and mobile devices
 
 ## Installation
@@ -50,29 +52,29 @@ A sophisticated AI chatbot built with Streamlit, LangChain, and OpenAI's GPT mod
 
 3. Start chatting with your AI assistant!
 
-## Voice Input Usage
+## Knowledge Base Usage
 
-1. Click the microphone button in the chat input area
-2. Allow microphone access when prompted by your browser
-3. Speak clearly into your microphone
-4. Click the stop button (⏹️) when finished
-5. Wait for your speech to be processed
+1. In the sidebar, under "Knowledge Base," click "Browse files" to select documents
+2. Upload PDFs, TXT files, CSVs, or DOCX documents that contain information you want the bot to reference
+3. Click "Process Documents" to analyze and embed the documents
+4. Once processed, the bot will automatically use these documents to provide more accurate answers
+5. You can clear the knowledge base at any time using the "Clear Knowledge Base" button
 
 ## Customization
 
 ### Model Selection
 
 You can choose between different OpenAI models:
-- GPT-4o-mini (default)
-- GPT-3.5-turbo
-- GPT-4o (requires higher API usage limits)
+- GPT-3.5-turbo (default, uses less API quota)
+- GPT-4o (more powerful but uses more API quota)
 
-### Temperature Setting
+### Personality Selection
 
-Adjust the temperature slider to control the randomness of responses:
-- Lower values (0.0-0.3): More focused, deterministic responses
-- Medium values (0.4-0.7): Balanced creativity and focus
-- Higher values (0.8-1.0): More creative, varied responses
+Adjust the chatbot's personality:
+- **Helpful Assistant**: Provides clear and concise answers
+- **Friendly Teacher**: Explains concepts in simple terms with examples
+- **Creative Writer**: Helps with creative and engaging content
+- **Technical Expert**: Provides detailed technical information with precise terminology
 
 ## Requirements
 
@@ -81,19 +83,31 @@ Adjust the temperature slider to control the randomness of responses:
 - LangChain
 - OpenAI API key
 - dotenv
+- FAISS for vector storage
+- Document processing libraries (pypdf, docx2txt)
 
 See `requirements.txt` for complete dependencies.
+
+## Additional Dependencies
+
+For knowledge base functionality, install:
+```
+pip install langchain-openai faiss-cpu pypdf docx2txt
+```
 
 ## Files
 
 - `app.py`: Main application code
 - `.env`: Environment variables (API keys)
 - `requirements.txt`: Required Python packages
+- `uploaded_docs/`: Directory where uploaded documents are temporarily stored
+- `chat_history_*.json`: Saved chat history files
 
 ## Developer Notes
 
-- The voice input feature uses the browser's MediaRecorder API
-- For a production environment, connect to a speech-to-text API like Google's Speech-to-Text, Whisper API, or Amazon Transcribe
+- The RAG implementation uses OpenAI Embeddings and FAISS for vector search
+- Documents are split into chunks of 1000 characters with 200 character overlap for better retrieval
+- The top 3 most relevant document chunks are retrieved for each user query
 
 ## License
 
@@ -102,9 +116,10 @@ MIT License
 ## Acknowledgments
 
 - [Streamlit](https://streamlit.io/) for the wonderful web framework
-- [LangChain](https://langchain.com/) for the conversation management
-- [OpenAI](https://openai.com/) for the GPT models
+- [LangChain](https://langchain.com/) for the conversation management and RAG capabilities
+- [OpenAI](https://openai.com/) for the GPT models and embeddings
+- [FAISS](https://github.com/facebookresearch/faiss) for efficient vector similarity search
 
 ---
 
-Created with by Ardavan
+Created with ❤️ by Ardavan
