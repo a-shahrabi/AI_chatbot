@@ -9,7 +9,7 @@ import json
 import time
 from datetime import datetime
 
-
+# New imports for knowledge base and RAG
 from langchain_community.document_loaders import (
     PyPDFLoader, 
     TextLoader, 
@@ -27,7 +27,7 @@ load_dotenv()
 
 # Configure the page layout and title
 st.set_page_config(
-    page_title="AI Chatbot",
+    page_title="AI Chatbot with Knowledge Base",
     layout="centered"
 )
 
@@ -92,16 +92,74 @@ def load_chat_history(filename):
         st.warning(f"Could not load chat history: {str(e)}")
         return []
 
-def initialize_conversation(model_name="gpt-3.5-turbo", personality="Helpful Assistant"):
-    """Initialize or reinitialize the conversation with specified settings"""
+# New function to handle document uploading and processing
+def process_documents(uploaded_files):
+    """Process uploaded documents and create a vector database"""
+    if not uploaded_files:
+        return None
+    
+    # Create a directory for storing uploaded documents if it doesn't exist
+    if not os.path.exists("uploaded_docs"):
+        os.makedirs("uploaded_docs")
+    
+    # Process each uploaded file
+    documents = []
+    for file in uploaded_files:
+        # Save the file temporarily
+        file_path = os.path.join("uploaded_docs", file.name)
+        with open(file_path, "wb") as f:
+            f.write(file.getbuffer())
+        
+        # Load the document based on file type
+        try:
+            if file.name.endswith(".pdf"):
+                loader = PyPDFLoader(file_path)
+            elif file.name.endswith(".txt"):
+                loader = TextLoader(file_path)
+            elif file.name.endswith(".csv"):
+                loader = CSVLoader(file_path)
+            elif file.name.endswith((".docx", ".doc")):
+                loader = Docx2txtLoader(file_path)
+            else:
+                st.warning(f"Unsupported file type: {file.name}. Skipping.")
+                continue
+            
+            # Load the document
+            loaded_docs = loader.load()
+            documents.extend(loaded_docs)
+            
+        except Exception as e:
+            st.error(f"Error loading {file.name}: {str(e)}")
+    
+    if not documents:
+        return None
+    
+    # Split the documents into chunks for processing
+    text_splitter = RecursiveCharacterTextSplitter(
+        chunk_size=1000,
+        chunk_overlap=200,
+        length_function=len,
+    )
+    chunks = text_splitter.split_documents(documents)
+    
+    # Create embeddings and store them in a vector database
+    try:
+        api_key = os.getenv("OPENAI_API_KEY")
+        embeddings = OpenAIEmbeddings(openai_api_key=api_key)
+        vectorstore = FAISS.from_documents(chunks, embeddings)
+        return vectorstore
+    except Exception as e:
+        st.error(f"Error creating vector database: {str(e)}")
+        return None
+
+# Initialize the RAG-enhanced conversation
+def initialize_rag_conversation(model_name="gpt-3.5-turbo", personality="Helpful Assistant", vectorstore=None):
+    """Initialize or reinitialize the conversation with RAG capabilities if vectorstore is provided"""
     # Get the OpenAI API key from environment variables
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
         st.error("OpenAI API key not found. Please check your .env file.")
         st.stop()
-    
-    # Get system message for selected personality
-    system_message = get_system_message(personality)
     
     try:
         # Initialize the language model
@@ -111,16 +169,84 @@ def initialize_conversation(model_name="gpt-3.5-turbo", personality="Helpful Ass
             openai_api_key=api_key
         )
 
-        # Create memory object and conversation chain
-        memory = ConversationBufferMemory(return_messages=True)
-        conversation = ConversationChain(
-            llm=llm,
-            memory=memory,
-            verbose=False
-        )
-        
-        # Set the system message in the conversation prompt template
-        conversation.prompt.template = f"{system_message}\n\nCurrent conversation:\n{{history}}\nHuman: {{input}}\nAI:"
+        # If we have a vectorstore, create a RAG chain
+        if vectorstore is not None:
+            # Create a retriever
+            retriever = vectorstore.as_retriever(
+                search_type="similarity",
+                search_kwargs={"k": 3}  # Retrieve top 3 most similar chunks
+            )
+            
+            # Create a template for using context from documents
+            template = """
+            You are an AI assistant with the personality of a {personality}.
+            
+            Use the following pieces of context to answer the user's question.
+            If you don't know the answer, just say that you don't know, don't try to make up an answer.
+            
+            Context: {context}
+            
+            Current conversation:
+            {history}
+            Human: {input}
+            AI:
+            """
+            
+            prompt = PromptTemplate(
+                input_variables=["personality", "context", "history", "input"],
+                template=template
+            )
+            
+            # Create a QA chain with memory
+            memory = ConversationBufferMemory(return_messages=True)
+            
+            # Create a customized RAG conversation chain
+            from langchain.chains import LLMChain
+            
+            class RAGConversationChain(LLMChain):
+                def __init__(self, llm, prompt, retriever, memory=None, verbose=False):
+                    super().__init__(llm=llm, prompt=prompt, verbose=verbose, memory=memory)
+                    self.retriever = retriever
+                
+                def predict(self, input):
+                    # Retrieve relevant documents
+                    docs = self.retriever.get_relevant_documents(input)
+                    context = "\n\n".join([doc.page_content for doc in docs])
+                    
+                    # Get conversation history
+                    history = ""
+                    if self.memory:
+                        history = "\n".join([f"{msg.type.capitalize()}: {msg.content}" 
+                                           for msg in self.memory.chat_memory.messages])
+                    
+                    # Run the chain
+                    return self({"personality": st.session_state.personality, 
+                                "context": context, 
+                                "history": history, 
+                                "input": input})["text"]
+            
+            conversation = RAGConversationChain(
+                llm=llm,
+                prompt=prompt,
+                retriever=retriever,
+                memory=memory,
+                verbose=False
+            )
+            
+        else:
+            # If no vectorstore, create a regular conversation chain
+            # Create memory object and conversation chain
+            memory = ConversationBufferMemory(return_messages=True)
+            conversation = ConversationChain(
+                llm=llm,
+                memory=memory,
+                verbose=False
+            )
+            
+            # Get system message for selected personality
+            system_message = get_system_message(personality)
+            # Set the system message in the conversation prompt template
+            conversation.prompt.template = f"{system_message}\n\nCurrent conversation:\n{{history}}\nHuman: {{input}}\nAI:"
         
         return conversation
     except Exception as e:
@@ -152,14 +278,46 @@ def get_rule_based_response(user_input):
 # Set up the main UI
 def setup_ui():
     # Set the main title of the application
-    st.title("AI Chatbot")
+    st.title("AI Chatbot with Knowledge Base")
     # Set the subtitle describing the technologies used
-    st.subheader("Built with streamlit, Langchain and GPT-4o")
+    st.subheader("Built with Streamlit, Langchain and RAG")
 
 def handle_sidebar():
     """Handle all sidebar functionality"""
     with st.sidebar:
         st.title("Options")
+        
+        # Knowledge Base Upload Section
+        st.subheader("Knowledge Base")
+        uploaded_files = st.file_uploader("Upload documents for the bot to reference", 
+                                        accept_multiple_files=True,
+                                        type=["pdf", "txt", "csv", "docx"])
+        
+        if uploaded_files and st.button("Process Documents"):
+            with st.spinner("Processing documents..."):
+                vectorstore = process_documents(uploaded_files)
+                if vectorstore:
+                    st.session_state.vectorstore = vectorstore
+                    st.success(f"Successfully processed {len(uploaded_files)} documents!")
+                    
+                    # Reinitialize conversation with the new vectorstore
+                    st.session_state.conversation = initialize_rag_conversation(
+                        model_name=st.session_state.model_name,
+                        personality=st.session_state.personality,
+                        vectorstore=vectorstore
+                    )
+        
+        # Show knowledge base status
+        if "vectorstore" in st.session_state and st.session_state.vectorstore:
+            st.info("Knowledge base is active. The bot will use your documents to answer questions.")
+            if st.button("Clear Knowledge Base"):
+                st.session_state.vectorstore = None
+                # Reinitialize conversation without vectorstore
+                st.session_state.conversation = initialize_rag_conversation(
+                    model_name=st.session_state.model_name,
+                    personality=st.session_state.personality
+                )
+                st.success("Knowledge base cleared.")
         
         # Fallback mode status and control
         st.subheader("Fallback Mode")
@@ -188,21 +346,16 @@ def handle_sidebar():
                 
                 # If we're in fallback mode, don't try to create a new conversation
                 if not st.session_state.fallback_mode:
-                    # Keep the existing memory if possible
-                    memory = None
-                    if "conversation" in st.session_state and st.session_state.conversation:
-                        memory = st.session_state.conversation.memory
+                    # Get the existing vectorstore if available
+                    vectorstore = st.session_state.vectorstore if "vectorstore" in st.session_state else None
                     
                     # Update the conversation with new model
-                    st.session_state.conversation = initialize_conversation(
+                    st.session_state.conversation = initialize_rag_conversation(
                         model_name=model_name,
-                        personality=st.session_state.personality
+                        personality=st.session_state.personality,
+                        vectorstore=vectorstore
                     )
                     
-                    # Restore memory if we had it
-                    if memory:
-                        st.session_state.conversation.memory = memory
-                
                 st.success(f"Model changed to {model_name}")
             except Exception as e:
                 st.error(f"Error switching models: {str(e)}")
@@ -223,13 +376,17 @@ def handle_sidebar():
                 # Update session state
                 st.session_state.personality = personality
                 
-                # Only update the prompt if not in fallback mode
-                if not st.session_state.fallback_mode and "conversation" in st.session_state and st.session_state.conversation:
-                    # Get the system message for the selected personality
-                    system_message = get_system_message(personality)
+                # Only update if not in fallback mode
+                if not st.session_state.fallback_mode:
+                    # Get the existing vectorstore if available
+                    vectorstore = st.session_state.vectorstore if "vectorstore" in st.session_state else None
                     
-                    # Update the conversation prompt template with the new personality
-                    st.session_state.conversation.prompt.template = f"{system_message}\n\nCurrent conversation:\n{{history}}\nHuman: {{input}}\nAI:"
+                    # Reinitialize the conversation with the new personality
+                    st.session_state.conversation = initialize_rag_conversation(
+                        model_name=st.session_state.model_name,
+                        personality=personality,
+                        vectorstore=vectorstore
+                    )
                 
                 st.success(f"Personality changed to {personality}")
             except Exception as e:
@@ -316,11 +473,14 @@ def main():
 
     if "fallback_mode" not in st.session_state:
         st.session_state.fallback_mode = False
+        
+    if "vectorstore" not in st.session_state:
+        st.session_state.vectorstore = None
 
     # Initialize conversation if it doesn't exist
     if "conversation" not in st.session_state:
         try:
-            st.session_state.conversation = initialize_conversation(
+            st.session_state.conversation = initialize_rag_conversation(
                 model_name=st.session_state.model_name,
                 personality=st.session_state.personality
             )
@@ -358,11 +518,17 @@ def main():
         
         # Try to reinitialize the conversation with current settings
         try:
-            st.session_state.conversation = initialize_conversation(
+            # Get the existing vectorstore if available
+            vectorstore = st.session_state.vectorstore if "vectorstore" in st.session_state else None
+            
+            st.session_state.conversation = initialize_rag_conversation(
                 model_name=st.session_state.model_name,
-                personality=st.session_state.personality
+                personality=st.session_state.personality,
+                vectorstore=vectorstore
             )
-            st.success(f"Chat cleared. Using {st.session_state.model_name} with {st.session_state.personality} personality.")
+            
+            kb_status = "with Knowledge Base" if vectorstore else "without Knowledge Base"
+            st.success(f"Chat cleared. Using {st.session_state.model_name} with {st.session_state.personality} personality {kb_status}.")
         except Exception as e:
             st.error(f"Error reinitializing conversation: {str(e)}")
             st.session_state.fallback_mode = True
@@ -373,8 +539,10 @@ def main():
     # Information about current mode
     if st.session_state.fallback_mode:
         st.warning("⚠️ Running in fallback mode due to API limitations. Responses are rule-based and limited.")
+    elif "vectorstore" in st.session_state and st.session_state.vectorstore:
+        st.success("🧠 Knowledge base is active. The bot can reference your uploaded documents.")
     else:
-        st.info("💡 If you encounter quota errors, use gpt-3.5-turbo which is more affordable.")
+        st.info("💡 Upload documents to the knowledge base to make the bot more helpful with specific information.")
 
 # Run the app
 if __name__ == "__main__":
